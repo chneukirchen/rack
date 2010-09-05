@@ -13,7 +13,13 @@ module Rack
     # query strings faster.  Use this rather than the cgi.rb
     # version since it's faster.  (Stolen from Camping).
     def escape(s)
-      s.to_s.gsub(/([^ a-zA-Z0-9_.-]+)/n) {
+      regexp = case
+        when RUBY_VERSION >= "1.9" && s.encoding === Encoding.find('UTF-8')
+          /([^ a-zA-Z0-9_.-]+)/u
+        else
+          /([^ a-zA-Z0-9_.-]+)/n
+        end
+      s.to_s.gsub(regexp) {
         '%'+$1.unpack('H2'*bytesize($1)).join('%').upcase
       }.tr(' ', '+')
     end
