@@ -77,6 +77,17 @@ describe Rack::Request do
     req.POST.should.equal "foo" => "bar", "quux" => "bla"
     req.params.should.equal "foo" => "bar", "quux" => "bla"
   end
+  
+  should "not unify GET and POST when calling params" do
+     req = Rack::Request.new \
+        Rack::MockRequest.env_for("/?foo=quux",
+          "REQUEST_METHOD" => 'POST',
+          :input => "foo=bar&quux=bla")
+    
+     req.params
+     req.GET.should.equal "foo" => "quux"
+     req.POST.should.equal "foo" => "bar", "quux" => "bla"
+  end
 
   should "parse POST data with explicit content type regardless of method" do
     req = Rack::Request.new \
