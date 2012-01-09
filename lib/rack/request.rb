@@ -73,7 +73,7 @@ module Rack
       elsif @env['HTTP_X_FORWARDED_SSL'] == 'on'
         'https'
       elsif @env['HTTP_X_FORWARDED_PROTO']
-        @env['HTTP_X_FORWARDED_PROTO'].split(',')[0]
+        'https' if @env['HTTP_X_FORWARDED_PROTO'].split(',').collect{|x| x.strip}.include?('https')        
       else
         @env["rack.url_scheme"]
       end
