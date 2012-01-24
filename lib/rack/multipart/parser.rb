@@ -17,19 +17,7 @@ module Rack
         loop do
           head, filename, content_type, name, body =
             get_current_head_and_filename_and_content_type_and_name_and_body
-
-          # Save the rest.
-          if i = @buf.index(rx)
-            body << @buf.slice!(0, i)
-            @buf.slice!(0, @boundary_size+2)
-
-            @content_length = -1  if $1 == "--"
-          end
-
-          filename, data = get_data(filename, body, content_type, name, head)
-
-          Utils.normalize_params(@params, name, data) unless data.nil?
-
+          
           # break if we're at the end of a buffer, but not if it is the end of a field
           break if (@buf.empty? && $1 != EOL) || @content_length == -1
         end
@@ -110,6 +98,18 @@ module Rack
           @buf << content
           @content_length -= content.size
         end
+
+        # Save the rest.
+        if i = @buf.index(rx)
+          body << @buf.slice!(0, i)
+          @buf.slice!(0, @boundary_size+2)
+
+          @content_length = -1 if $1 == "--"
+        end
+
+        filename, data = get_data(filename, body, content_type, name, head)
+
+        Utils.normalize_params(@params, name, data) unless data.nil?
 
         [head, filename, content_type, name, body]
       end
