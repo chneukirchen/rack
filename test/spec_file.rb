@@ -145,14 +145,6 @@ describe Rack::File do
     res["Content-Range"].should.equal "bytes */193"
   end
 
-  should "support legacy cache control options provided as string" do
-    env = Rack::MockRequest.env_for("/cgi/test")
-    status, heads, _ = file(DOCROOT, 'public, max-age=38').call(env)
-
-    status.should.equal 200
-    heads['Cache-Control'].should.equal 'public, max-age=38'
-  end
-
   should "support custom http headers" do
     env = Rack::MockRequest.env_for("/cgi/test")
     status, heads, _ = file(DOCROOT, 'Cache-Control' => 'public, max-age=38',
@@ -195,6 +187,27 @@ describe Rack::File do
     res = req.head "/cgi/test"
     res.should.be.successful
     res['Content-Length'].should.equal "193"
+  end
+
+  should "default to a mime type of text/plain" do
+    req = Rack::MockRequest.new(Rack::Lint.new(Rack::File.new(DOCROOT)))
+    res = req.get "/cgi/test"
+    res.should.be.successful
+    res['Content-Type'].should.equal "text/plain"
+  end
+
+  should "allow the default mime type to be set" do
+    req = Rack::MockRequest.new(Rack::Lint.new(Rack::File.new(DOCROOT, nil, 'application/octet-stream')))
+    res = req.get "/cgi/test"
+    res.should.be.successful
+    res['Content-Type'].should.equal "application/octet-stream"
+  end
+
+  should "not set Content-Type if the mime type is not set" do
+    req = Rack::MockRequest.new(Rack::Lint.new(Rack::File.new(DOCROOT, nil, nil)))
+    res = req.get "/cgi/test"
+    res.should.be.successful
+    res['Content-Type'].should.equal nil
   end
 
 end

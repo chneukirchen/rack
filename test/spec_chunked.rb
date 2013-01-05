@@ -3,18 +3,16 @@ require 'rack/lint'
 require 'rack/mock'
 
 describe Rack::Chunked do
-  ::Enumerator = ::Enumerable::Enumerator unless Object.const_defined?(:Enumerator)
-
   def chunked(app)
     proc do |env|
       app = Rack::Chunked.new(app)
       response = Rack::Lint.new(app).call(env)
       # we want to use body like an array, but it only has #each
-      response[2] = Enumerator.new(response[2]).to_a
+      response[2] = response[2].to_enum.to_a
       response
     end
   end
-  
+
   before do
     @env = Rack::MockRequest.
       env_for('/', 'HTTP_VERSION' => '1.1', 'REQUEST_METHOD' => 'GET')
@@ -43,7 +41,7 @@ describe Rack::Chunked do
     response.headers.should.not.include 'Content-Length'
     response.headers['Transfer-Encoding'].should.equal 'chunked'
     response.body.encoding.to_s.should.equal "ASCII-8BIT"
-    response.body.should.equal "c\r\n\xFE\xFFH\x00e\x00l\x00l\x00o\x00\r\n2\r\n \x00\r\na\r\nW\x00o\x00r\x00l\x00d\x00\r\n0\r\n\r\n"
+    response.body.should.equal "c\r\n\xFE\xFFH\x00e\x00l\x00l\x00o\x00\r\n2\r\n \x00\r\na\r\nW\x00o\x00r\x00l\x00d\x00\r\n0\r\n\r\n".force_encoding("BINARY")
   end if RUBY_VERSION >= "1.9"
 
   should 'not modify response when Content-Length header present' do

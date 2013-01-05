@@ -98,10 +98,8 @@ module Rack
         port.to_i
       elsif port = @env['HTTP_X_FORWARDED_PORT']
         port.to_i
-      elsif ssl?
-        443
       elsif @env.has_key?("HTTP_X_FORWARDED_HOST")
-        80
+        DEFAULT_PORTS[scheme]
       else
         @env["SERVER_PORT"].to_i
       end
@@ -118,25 +116,25 @@ module Rack
 
     # Checks the HTTP request method (or verb) to see if it was of type DELETE
     def delete?;  request_method == "DELETE"  end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type GET
     def get?;     request_method == "GET"     end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type HEAD
     def head?;    request_method == "HEAD"    end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type OPTIONS
     def options?; request_method == "OPTIONS" end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type PATCH
     def patch?;   request_method == "PATCH"   end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type POST
     def post?;    request_method == "POST"    end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type PUT
     def put?;     request_method == "PUT"     end
-    
+
     # Checks the HTTP request method (or verb) to see if it was of type TRACE
     def trace?;   request_method == "TRACE"   end
 
@@ -156,6 +154,10 @@ module Rack
       'multipart/related',
       'multipart/mixed'
     ]
+
+    # Default ports depending on scheme. Used to decide whether or not
+    # to include the port in a generated URI.
+    DEFAULT_PORTS = { 'http' => 80, 'https' => 443, 'coffee' => 80 }
 
     # Determine whether the request body contains form-data by checking
     # the request Content-Type for one of the media-types:
@@ -297,12 +299,10 @@ module Rack
       #   the Cookie header such that those with more specific Path attributes
       #   precede those with less specific.  Ordering with respect to other
       #   attributes (e.g., Domain) is unspecified.
-      Utils.parse_query(string, ';,').each { |k,v| hash[k] = Array === v ? v.first : v }
+      cookies = Utils.parse_query(string, ';,') { |s| Rack::Utils.unescape(s) rescue s }
+      cookies.each { |k,v| hash[k] = Array === v ? v.first : v }
       @env["rack.request.cookie_string"] = string
       hash
-    rescue => error
-      error.message.replace "cannot parse Cookie header: #{error.message}"
-      raise
     end
 
     def xhr?
@@ -310,14 +310,8 @@ module Rack
     end
 
     def base_url
-      url = scheme + "://"
-      url << host
-
-      if scheme == "https" && port != 443 ||
-          scheme == "http" && port != 80
-        url << ":#{port}"
-      end
-
+      url = "#{scheme}://#{host}"
+      url << ":#{port}" if port != DEFAULT_PORTS[scheme]
       url
     end
 
@@ -352,7 +346,7 @@ module Rack
     def ip
       remote_addrs = split_ip_addresses(@env['REMOTE_ADDR'])
       remote_addrs = reject_trusted_ip_addresses(remote_addrs)
-      
+
       return remote_addrs.first if remote_addrs.any?
 
       forwarded_ips = split_ip_addresses(@env['HTTP_X_FORWARDED_FOR'])

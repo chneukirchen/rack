@@ -508,9 +508,9 @@ describe Rack::Request do
     req2.params.should.equal({})
   end
 
-  should "raise any errors on every request" do
+  should "pass through non-uri escaped cookies as-is" do
     req = Rack::Request.new Rack::MockRequest.env_for("", "HTTP_COOKIE" => "foo=%")
-    2.times { proc { req.cookies }.should.raise(ArgumentError) }
+    req.cookies["foo"].should == "%"
   end
 
   should "parse cookies according to RFC 2109" do
@@ -569,7 +569,10 @@ describe Rack::Request do
       should.equal "http://example.org:8080/"
     Rack::Request.new(Rack::MockRequest.env_for("https://example.org/")).url.
       should.equal "https://example.org/"
-
+    Rack::Request.new(Rack::MockRequest.env_for("coffee://example.org/")).url.
+      should.equal "coffee://example.org/"
+    Rack::Request.new(Rack::MockRequest.env_for("coffee://example.org:443/")).url.
+      should.equal "coffee://example.org:443/"
     Rack::Request.new(Rack::MockRequest.env_for("https://example.com:8080/foo?foo")).url.
       should.equal "https://example.com:8080/foo?foo"
   end

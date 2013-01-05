@@ -21,16 +21,10 @@ module Rack
 
     alias :to_path :path
 
-    def initialize(root, headers={})
+    def initialize(root, headers={}, default_mime = 'text/plain')
       @root = root
-      # Allow a cache_control string for backwards compatibility
-      if headers.instance_of? String
-        warn \
-          "Rack::File headers parameter replaces cache_control after Rack 1.5."
-        @headers = { 'Cache-Control' => headers }
-      else
-        @headers = headers
-      end
+      @headers = headers
+      @default_mime = default_mime
     end
 
     def call(env)
@@ -77,17 +71,15 @@ module Rack
     def serving(env)
       last_modified = F.mtime(@path).httpdate
       return [304, {}, []] if env['HTTP_IF_MODIFIED_SINCE'] == last_modified
-      response = [
-        200,
-        {
-          "Last-Modified"  => last_modified,
-          "Content-Type"   => Mime.mime_type(F.extname(@path), 'text/plain')
-        },
-        env["REQUEST_METHOD"] == "HEAD" ? [] : self
-      ]
+
+      headers = { "Last-Modified" => last_modified }
+      mime = Mime.mime_type(F.extname(@path), @default_mime)
+      headers["Content-Type"] = mime if mime
 
       # Set custom headers
-      @headers.each { |field, content| response[1][field] = content } if @headers
+      @headers.each { |field, content| headers[field] = content } if @headers
+
+      response = [ 200, headers, env["REQUEST_METHOD"] == "HEAD" ? [] : self ]
 
       # NOTE:
       #   We check via File::size? whether this file provides size info

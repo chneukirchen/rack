@@ -21,8 +21,7 @@ module Rack
 
     def initialize(body=[], status=200, header={})
       @status = status.to_i
-      @header = Utils::HeaderHash.new("Content-Type" => "text/html").
-                                      merge(header)
+      @header = Utils::HeaderHash.new.merge(header)
 
       @chunked = "chunked" == @header['Transfer-Encoding']
       @writer  = lambda { |x| @body << x }
@@ -74,9 +73,10 @@ module Rack
       if [204, 205, 304].include?(status.to_i)
         header.delete "Content-Type"
         header.delete "Content-Length"
+        close
         [status.to_i, header, []]
       else
-        [status.to_i, header, self]
+        [status.to_i, header, BodyProxy.new(self){}]
       end
     end
     alias to_a finish           # For *response
